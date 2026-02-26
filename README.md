@@ -82,6 +82,7 @@ With write access (create + update):
       "env": {
         "WACM_USERNAME": "your-username",
         "WACM_API_KEY": "your-api-key",
+        "WACM_WRITE_ACCESS": "true",
         "WACM_WRITE_LEVEL": "manage"
       }
     }
@@ -100,6 +101,7 @@ With specific write operations only:
       "env": {
         "WACM_USERNAME": "your-username",
         "WACM_API_KEY": "your-api-key",
+        "WACM_WRITE_ACCESS": "true",
         "WACM_WRITE_ALLOWED_OPERATIONS": "create_sub_account,delete_member"
       }
     }
@@ -118,6 +120,7 @@ With specific write operations only:
       "env": {
         "WACM_USERNAME": "your-username",
         "WACM_API_KEY": "your-api-key",
+        "WACM_WRITE_ACCESS": "true",
         "WACM_WRITE_LEVEL": "full"
       }
     }
@@ -131,6 +134,7 @@ With specific write operations only:
 |----------|-------------|----------|
 | `WACM_USERNAME` | WACM Connect username | Yes |
 | `WACM_API_KEY` | WACM Connect API key | Yes |
+| `WACM_WRITE_ACCESS` | Set to `true` to enable write operations (kill switch) | No |
 | `WACM_WRITE_LEVEL` | Write access tier: `create`, `manage`, or `full` (see below) | No |
 | `WACM_WRITE_ALLOWED_OPERATIONS` | Comma-separated list of write operation names to enable | No |
 
@@ -138,7 +142,7 @@ CLI flags `--username` and `--api-key` override environment variables.
 
 ## Write Access Tiers
 
-Write operations are disabled by default. Set `WACM_WRITE_LEVEL` and/or `WACM_WRITE_ALLOWED_OPERATIONS` to enable them.
+Write operations are disabled by default. To enable them, you must set `WACM_WRITE_ACCESS=true` **and** at least one of `WACM_WRITE_LEVEL` or `WACM_WRITE_ALLOWED_OPERATIONS`. The kill switch (`WACM_WRITE_ACCESS`) must be explicitly set — without it, no write tools are registered regardless of other settings.
 
 | Tier | Tools Enabled | Count |
 |------|---------------|-------|
@@ -232,16 +236,18 @@ Unknown level values or operation names are logged as warnings and ignored.
 
 Write operations are protected by multiple safety layers:
 
-1. **Tiered access control** — `WACM_WRITE_LEVEL` controls which categories of write tools are registered. Unregistered tools are completely invisible to the LLM.
+1. **Kill switch** — `WACM_WRITE_ACCESS=true` must be explicitly set to enable any write operations. Without this, all other write settings are ignored and the server is strictly read-only.
 
-2. **Operation allowlist** — `WACM_WRITE_ALLOWED_OPERATIONS` provides fine-grained control over exactly which write tools are available, independent of or combined with tier levels.
+2. **Tiered access control** — `WACM_WRITE_LEVEL` controls which categories of write tools are registered. Unregistered tools are completely invisible to the LLM.
 
-3. **MCP tool annotations** — Each write tool carries metadata hints for the LLM:
+3. **Operation allowlist** — `WACM_WRITE_ALLOWED_OPERATIONS` provides fine-grained control over exactly which write tools are available, independent of or combined with tier levels.
+
+4. **MCP tool annotations** — Each write tool carries metadata hints for the LLM:
    - Create (POST): `readOnlyHint: false`
    - Update (PUT): `readOnlyHint: false, idempotentHint: true`
    - Delete (DELETE): `readOnlyHint: false, destructiveHint: true`
 
-4. **Dry-run mode** — Every write tool accepts a `dryRun` boolean parameter (default: `false`). When `true`, the tool returns a preview of the HTTP request (method, URL, headers, body) without executing it. Auth credentials are redacted in the preview.
+5. **Dry-run mode** — Every write tool accepts a `dryRun` boolean parameter (default: `false`). When `true`, the tool returns a preview of the HTTP request (method, URL, headers, body) without executing it. Auth credentials are redacted in the preview.
 
 ## Available Resources (4)
 

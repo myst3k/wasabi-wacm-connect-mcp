@@ -42,6 +42,10 @@ const TIER_OPS: Record<string, string[]> = {
 function resolveWriteOps(): Set<string> {
   const ops = new Set<string>();
 
+  if (process.env.WACM_WRITE_ACCESS?.toLowerCase() !== 'true') {
+    return ops;
+  }
+
   const level = process.env.WACM_WRITE_LEVEL?.toLowerCase();
   if (level) {
     const tierOps = TIER_OPS[level];
