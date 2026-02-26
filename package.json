@@ -1,0 +1,44 @@
+{
+  "name": "wasabi-wacm-connect-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Wasabi WACM Connect API",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "wasabi-wacm-connect-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "check": "tsc --noEmit"
+  },
+  "keywords": [
+    "mcp",
+    "wasabi",
+    "wacm",
+    "cloud-storage",
+    "model-context-protocol"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "eslint": "^9.21.0",
+    "eslint-config-prettier": "^10.0.1",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.24.1",
+    "vitest": "^3.0.7"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
