@@ -286,3 +286,108 @@ export interface StorageAmount {
 export interface Country {
   name: string;
 }
+
+// Write operation request bodies
+
+export interface CreateSubAccountRequest {
+  controlAccountId: number;
+  name: string;
+  wasabiAccountEmail: string;
+  password: string;
+  storageQuotaType: string;
+  channelAccountId?: number;
+  purchasedStorageTB?: number;
+  sendPasswordResetToSubAccount?: boolean;
+  ftpEnabled?: boolean;
+}
+
+export interface UpdateSubAccountRequest {
+  name?: string;
+  storageQuotaType?: string;
+  purchasedStorageTB?: number;
+  sendPasswordResetToSubAccount?: boolean;
+  ftpEnabled?: boolean;
+  status?: string;
+}
+
+export interface CreateMemberRequest {
+  subAccountId: number;
+  firstName: string;
+  lastName: string;
+  username: string;
+  memberRole: string;
+  email: string;
+  password: string;
+  address1?: string;
+  address2?: string;
+  country?: string;
+  city?: string;
+  stateName?: string;
+  zip?: string;
+  phone?: string;
+}
+
+export interface UpdateMemberRequest {
+  firstName?: string;
+  lastName?: string;
+  memberRole?: string;
+  email?: string;
+  address1?: string;
+  address2?: string;
+  country?: string;
+  city?: string;
+  stateName?: string;
+  zip?: string;
+  phone?: string;
+  status?: string;
+}
+
+export interface CreateChannelAccountRequest {
+  controlAccountId: number;
+  name: string;
+  contactEmail: string;
+  purchasedStorage: number;
+  storageQuotaType: string;
+  subAccountDefaultPurchasedStorage?: number;
+  subAccountDefaultStorageQuotaType?: string;
+  address1?: string;
+  address2?: string;
+  country?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+}
+
+export interface UpdateChannelAccountRequest {
+  name?: string;
+  contactEmail?: string;
+  purchasedStorage?: number;
+  storageQuotaType?: string;
+  subAccountDefaultPurchasedStorage?: number;
+  subAccountDefaultStorageQuotaType?: string;
+  address1?: string;
+  address2?: string;
+  country?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  status?: string;
+}
+
+export interface CreateChannelAccountUserRequest {
+  channelAccountId: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  userRole: string;
+}
+
+export interface CreateStandaloneAccountRequest {
+  firstName: string;
+  lastName: string;
+  companyName: string;
+  email: string;
+  country: string;
+  phoneNumber: string;
+  storageAmount: string;
+}

@@ -110,4 +110,67 @@ describe('WacmClient', () => {
     expect(result.items).toHaveLength(2);
     expect(result.total).toBe(2);
   });
+
+  it('post() sends POST with JSON body', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ success: true, data: { id: 1, name: 'Created' } }),
+    );
+
+    const client = new WacmClient('user', 'key');
+    const result = await client.post<{ id: number; name: string }>('/v1/test', {
+      name: 'Created',
+    });
+
+    expect(result).toEqual({ id: 1, name: 'Created' });
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.method).toBe('POST');
+    expect(init.headers['Content-Type']).toBe('application/json');
+    expect(JSON.parse(init.body)).toEqual({ name: 'Created' });
+  });
+
+  it('put() sends PUT with JSON body', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ success: true, data: { id: 1, name: 'Updated' } }),
+    );
+
+    const client = new WacmClient('user', 'key');
+    await client.put('/v1/test/1', { name: 'Updated' });
+
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.method).toBe('PUT');
+    expect(JSON.parse(init.body)).toEqual({ name: 'Updated' });
+  });
+
+  it('delete() sends DELETE without body', async () => {
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse({ success: true, data: { id: 1 } }),
+    );
+
+    const client = new WacmClient('user', 'key');
+    await client.delete('/v1/test/1');
+
+    const [, init] = mockFetch.mock.calls[0];
+    expect(init.method).toBe('DELETE');
+    expect(init.body).toBeUndefined();
+  });
+
+  it('buildRequestPreview returns preview without calling fetch', () => {
+    const client = new WacmClient('user', 'key');
+    const preview = client.buildRequestPreview('POST', '/v1/test', { name: 'Test' });
+
+    expect(preview.method).toBe('POST');
+    expect(preview.url).toContain('/v1/test');
+    expect(preview.headers.Authorization).toBe('Basic [REDACTED]');
+    expect(preview.headers['Content-Type']).toBe('application/json');
+    expect(preview.body).toEqual({ name: 'Test' });
+  });
+
+  it('buildRequestPreview omits body and Content-Type for DELETE', () => {
+    const client = new WacmClient('user', 'key');
+    const preview = client.buildRequestPreview('DELETE', '/v1/test/1');
+
+    expect(preview.method).toBe('DELETE');
+    expect(preview.body).toBeUndefined();
+    expect(preview.headers['Content-Type']).toBeUndefined();
+  });
 });

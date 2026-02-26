@@ -1,6 +1,40 @@
 # WACM Connect MCP Server
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that provides read-only access to the [Wasabi WACM Connect API](https://docs.wasabi.com/docs/wacm-connect-api). Designed for Managed Service Providers (MSPs) who need to query their Wasabi account hierarchy, storage usage, and billing data through Claude.
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server for the [Wasabi WACM Connect API](https://docs.wasabi.com/docs/wacm-connect-api). Provides 18 read-only tools out of the box, with 12 opt-in write tools behind tiered access controls. Designed for Managed Service Providers (MSPs) who need to manage their Wasabi account hierarchy, storage usage, and billing data through Claude.
+
+> [!WARNING]
+> **This MCP server has write access to your Wasabi account management infrastructure.**
+>
+> This tool can create, modify, and delete sub-accounts, members, channel accounts, and other resources in your live WACM environment. **Actions taken through this MCP are real and may be irreversible.**
+
+## Disclaimer
+
+This is an independent, community-maintained project. It is **not affiliated with, endorsed by, or supported by Wasabi Technologies**. "Wasabi" and "WACM" are trademarks of Wasabi Technologies, Inc. Wasabi Technologies is not responsible for unintended changes made through this integration.
+
+### AI-Specific Risks
+
+This server is designed to be operated by an AI assistant (LLM). AI models can and do make mistakes — they may misinterpret instructions, hallucinate parameter values, or take actions you did not intend. In the context of account management, this means an AI could accidentally:
+
+- **Create unwanted accounts** with incorrect configurations or storage quotas
+- **Modify existing accounts** by changing settings, roles, or permissions you didn't ask to change
+- **Delete accounts, members, or channel accounts** that were not meant to be removed
+- **Perform bulk operations** across multiple resources when you intended a single change
+- **Act on the wrong resource** by confusing similarly named accounts or IDs
+
+These are real API calls against your real Wasabi infrastructure unless you are using a dedicated test account. There is no sandbox, staging layer, or undo button between the AI and your environment.
+
+### Before Use
+
+- **Understand your API credentials** — the API key's permission scope determines what the AI can reach
+- **Test in a non-production environment** if possible before enabling write access on production accounts
+- **Start read-only** — write tools are disabled by default; only enable the minimum tier you need
+- **Use dry-run mode** — every write tool supports `dryRun: true` to preview the exact HTTP request before execution
+- **Review all AI-suggested actions** before confirming, especially bulk operations or deletions
+- **Prefer the operation allowlist** over broad tier access to limit exposure to only the tools you actually need
+
+### Liability
+
+**Use at your own risk.** The authors assume no liability for data loss, service disruption, unintended account modifications, or other damages resulting from use of this software — whether caused by AI error, misconfiguration, or any other reason. See the [Apache 2.0 license](LICENSE) for full terms.
 
 ## Prerequisites
 
@@ -20,7 +54,7 @@ pnpm build
 
 ### Claude Code (`.mcp.json`)
 
-Add to your project's `.mcp.json`:
+Read-only (default):
 
 ```json
 {
@@ -31,6 +65,42 @@ Add to your project's `.mcp.json`:
       "env": {
         "WACM_USERNAME": "your-username",
         "WACM_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+With write access (create + update):
+
+```json
+{
+  "mcpServers": {
+    "wasabi-wacm-connect-mcp": {
+      "command": "node",
+      "args": ["/path/to/wasabi-wacm-connect-mcp/dist/index.js"],
+      "env": {
+        "WACM_USERNAME": "your-username",
+        "WACM_API_KEY": "your-api-key",
+        "WACM_WRITE_LEVEL": "manage"
+      }
+    }
+  }
+}
+```
+
+With specific write operations only:
+
+```json
+{
+  "mcpServers": {
+    "wasabi-wacm-connect-mcp": {
+      "command": "node",
+      "args": ["/path/to/wasabi-wacm-connect-mcp/dist/index.js"],
+      "env": {
+        "WACM_USERNAME": "your-username",
+        "WACM_API_KEY": "your-api-key",
+        "WACM_WRITE_ALLOWED_OPERATIONS": "create_sub_account,delete_member"
       }
     }
   }
@@ -47,7 +117,8 @@ Add to your project's `.mcp.json`:
       "args": ["/path/to/wasabi-wacm-connect-mcp/dist/index.js"],
       "env": {
         "WACM_USERNAME": "your-username",
-        "WACM_API_KEY": "your-api-key"
+        "WACM_API_KEY": "your-api-key",
+        "WACM_WRITE_LEVEL": "full"
       }
     }
   }
@@ -60,12 +131,34 @@ Add to your project's `.mcp.json`:
 |----------|-------------|----------|
 | `WACM_USERNAME` | WACM Connect username | Yes |
 | `WACM_API_KEY` | WACM Connect API key | Yes |
+| `WACM_WRITE_LEVEL` | Write access tier: `create`, `manage`, or `full` (see below) | No |
+| `WACM_WRITE_ALLOWED_OPERATIONS` | Comma-separated list of write operation names to enable | No |
 
 CLI flags `--username` and `--api-key` override environment variables.
 
-## Available Tools (18)
+## Write Access Tiers
 
-### Control Accounts
+Write operations are disabled by default. Set `WACM_WRITE_LEVEL` and/or `WACM_WRITE_ALLOWED_OPERATIONS` to enable them.
+
+| Tier | Tools Enabled | Count |
+|------|---------------|-------|
+| `create` | All 5 POST (create) tools | 5 |
+| `manage` | `create` + 3 PUT (update) tools | 8 |
+| `full` | `manage` + 4 DELETE tools | 12 |
+
+When both env vars are set, the resolved operations are the **union** of both:
+- `WACM_WRITE_LEVEL=manage` + `WACM_WRITE_ALLOWED_OPERATIONS=delete_member` → 9 write tools
+- `WACM_WRITE_ALLOWED_OPERATIONS=create_sub_account,delete_member` (no level) → just those 2
+
+Unknown level values or operation names are logged as warnings and ignored.
+
+### Valid Operation Names
+
+`create_sub_account`, `update_sub_account`, `delete_sub_account`, `create_member`, `update_member`, `delete_member`, `create_channel_account`, `update_channel_account`, `delete_channel_account`, `create_channel_account_user`, `delete_channel_account_user`, `create_standalone_account`
+
+## Available Tools (up to 30)
+
+### Control Accounts (read-only)
 
 | Tool | Description |
 |------|-------------|
@@ -77,34 +170,50 @@ CLI flags `--username` and `--api-key` override environment variables.
 
 ### Sub-Accounts
 
-| Tool | Description |
-|------|-------------|
-| `list_sub_accounts` | List all Sub-Accounts (Wasabi Console accounts) |
-| `get_sub_account` | Get a specific Sub-Account by ID |
-| `list_sub_account_buckets` | List bucket-level utilization for a Sub-Account |
+| Tool | Description | Access |
+|------|-------------|--------|
+| `list_sub_accounts` | List all Sub-Accounts (Wasabi Console accounts) | Read |
+| `get_sub_account` | Get a specific Sub-Account by ID | Read |
+| `list_sub_account_buckets` | List bucket-level utilization for a Sub-Account | Read |
+| `create_sub_account` | Create a new Sub-Account under a Control Account | Write (`create`) |
+| `update_sub_account` | Update an existing Sub-Account | Write (`manage`) |
+| `delete_sub_account` | Delete a Sub-Account | Write (`full`) |
 
 ### Channel Accounts
 
-| Tool | Description |
-|------|-------------|
-| `list_channel_accounts` | List all Channel Accounts (third-party access tier) |
-| `get_channel_account` | Get a specific Channel Account by ID |
+| Tool | Description | Access |
+|------|-------------|--------|
+| `list_channel_accounts` | List all Channel Accounts (third-party access tier) | Read |
+| `get_channel_account` | Get a specific Channel Account by ID | Read |
+| `create_channel_account` | Create a new Channel Account | Write (`create`) |
+| `update_channel_account` | Update an existing Channel Account | Write (`manage`) |
+| `delete_channel_account` | Delete a Channel Account | Write (`full`) |
+
+### Channel Account Users
+
+| Tool | Description | Access |
+|------|-------------|--------|
+| `create_channel_account_user` | Create a user for a Channel Account | Write (`create`) |
+| `delete_channel_account_user` | Delete a Channel Account user | Write (`full`) |
 
 ### Members
 
-| Tool | Description |
-|------|-------------|
-| `list_members` | List Sub-Account members with roles and MFA status |
-| `get_member` | Get a specific member by ID |
+| Tool | Description | Access |
+|------|-------------|--------|
+| `list_members` | List Sub-Account members with roles and MFA status | Read |
+| `get_member` | Get a specific member by ID | Read |
+| `create_member` | Create a new member in a Sub-Account | Write (`create`) |
+| `update_member` | Update an existing member | Write (`manage`) |
+| `delete_member` | Delete a member | Write (`full`) |
 
-### Invoices
+### Invoices (read-only)
 
 | Tool | Description |
 |------|-------------|
 | `list_invoices` | List invoices with cost breakdowns by sub-account |
 | `get_invoice` | Get a specific invoice by ID |
 
-### Usages
+### Usages (read-only)
 
 | Tool | Description |
 |------|-------------|
@@ -113,10 +222,26 @@ CLI flags `--username` and `--api-key` override environment variables.
 
 ### Standalone Accounts
 
-| Tool | Description |
-|------|-------------|
-| `list_standalone_accounts` | List Standalone Accounts (not in WACM hierarchy) |
-| `get_storage_amounts` | Get available storage amount options |
+| Tool | Description | Access |
+|------|-------------|--------|
+| `list_standalone_accounts` | List Standalone Accounts (not in WACM hierarchy) | Read |
+| `get_storage_amounts` | Get available storage amount options | Read |
+| `create_standalone_account` | Create a new Standalone Account | Write (`create`) |
+
+## Guardrails
+
+Write operations are protected by multiple safety layers:
+
+1. **Tiered access control** — `WACM_WRITE_LEVEL` controls which categories of write tools are registered. Unregistered tools are completely invisible to the LLM.
+
+2. **Operation allowlist** — `WACM_WRITE_ALLOWED_OPERATIONS` provides fine-grained control over exactly which write tools are available, independent of or combined with tier levels.
+
+3. **MCP tool annotations** — Each write tool carries metadata hints for the LLM:
+   - Create (POST): `readOnlyHint: false`
+   - Update (PUT): `readOnlyHint: false, idempotentHint: true`
+   - Delete (DELETE): `readOnlyHint: false, destructiveHint: true`
+
+4. **Dry-run mode** — Every write tool accepts a `dryRun` boolean parameter (default: `false`). When `true`, the tool returns a preview of the HTTP request (method, URL, headers, body) without executing it. Auth credentials are redacted in the preview.
 
 ## Available Resources (4)
 
@@ -157,6 +282,12 @@ Claude will call `list_invoices` with the previous month's date range, group by 
 
 Claude will use the `account-audit` prompt to enumerate all accounts and members, checking for missing MFA, deactivated accounts, and misconfigured quotas.
 
+### Create a Sub-Account with Dry Run
+
+> "Create a new sub-account called 'Acme Corp' under control account 5 — but show me the request first"
+
+Claude will call `create_sub_account` with `dryRun: true` and show the full HTTP request preview. After you confirm, it will execute the actual request.
+
 ## Troubleshooting
 
 ### Authentication Errors
@@ -177,10 +308,18 @@ Claude will use the `account-audit` prompt to enumerate all accounts and members
 - Governance users see all accounts; Control Account users see only their own
 - Use `includeDeleted: true` to see deleted sub-accounts
 
+### Write Tools Not Appearing
+
+- Verify `WACM_WRITE_LEVEL` or `WACM_WRITE_ALLOWED_OPERATIONS` is set in your MCP config
+- Check stderr for warning messages about unknown level values or operation names
+- Restart the MCP server after changing environment variables
+
 ## Security
 
 - **Credentials are stored in memory only** — never written to disk or logs
 - **Sensitive fields hidden by default** — `includeKeys` and `includeApiKey` default to `false`
+- **Write tools are opt-in** — no write operations are available unless explicitly enabled via env vars
+- **Dry-run previews redact credentials** — `buildRequestPreview` replaces the auth header with `Basic [REDACTED]`
 - **CLI arg visibility** — `--api-key` via CLI is visible in `ps` output; prefer environment variables for production
 - **Cloud LLM considerations** — data retrieved through this server may be processed by cloud AI services; review your organization's data handling policies
 - **Key rotation** — regenerate API keys periodically in WACM under My Profile > WACM Connect
